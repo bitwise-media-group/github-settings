@@ -2,10 +2,19 @@
 set -eu
 
 # org-config.sh — export/import a GitHub organisation's rulesets and general
-# settings, the org-level companion to repo-config.sh.
+# settings, plus fan repo labels out across the org; the org-level companion to
+# repo-config.sh.
 #
-#   ./org-config.sh export <org> [dir]   # dump config  -> dir (default: ./org-config)
-#   ./org-config.sh import <org> [dir]   # apply config <- dir
+#   ./org-config.sh export <org> [dir]        # dump config  -> dir (default: ./org-config)
+#   ./org-config.sh import <org> [dir]        # apply config <- dir
+#   ./org-config.sh labels-sync [--public|--private] <org> [dir]
+#   ./org-config.sh sync        [--public|--private] <org> [dir]
+#
+# org defaults to bitwise-media-group. The two *-sync commands fan config out
+# across the org's repos (default dir: ./repo-config) and take --public /
+# --private to limit which repos by visibility:
+#   labels-sync  applies only <dir>/labels.json to each repo.
+#   sync         runs the full repo-config.sh import (settings, rulesets, labels).
 #
 # What's covered:
 #   - Organisation-level rulesets only (full definitions: conditions, rules,
@@ -31,9 +40,19 @@ set -eu
 #     ones with a file, delete any ruleset that has no matching file. A missing
 #     rulesets dir is left untouched; an empty one means "remove them all".
 #
+# Labels: GitHub has no org-level labels API — org "default labels" are a UI-only
+# setting that merely seeds NEW repos. So labels-sync instead fans a canonical
+# repo-config/labels.json out to EVERY non-archived repo in the org, applying the
+# same upsert + delete mirror logic repo-config.sh uses (this also covers repos
+# that already exist). Destructive by design: a label absent from the file is
+# deleted from each repo, which removes it from that repo's issues/PRs. Set
+# KEEP_EXTRA=1 to only add/update and never delete.
+#
 # Env:
 #   STRIP_BYPASS=1   drop ruleset bypass_actors on export — use when the bypass
 #                    actors (teams, apps, custom roles) won't exist in the target.
+#   KEEP_EXTRA=1     labels-sync only: add/update labels but never delete ones a
+#                    repo has that aren't in labels.json (additive, not mirror).
 #
 # Requires: gh (authenticated, org owner), jq.
 # Note: reading/writing org settings and rulesets requires organisation owner;
@@ -60,15 +79,46 @@ SETTINGS_FILTER='{
 usage() {
   echo "usage: $0 export <org> [dir]" >&2
   echo "       $0 import <org> [dir]" >&2
+  echo "       $0 labels-sync [--public|--private] <org> [dir]   (dir default: repo-config)" >&2
+  echo "       $0 sync        [--public|--private] <org> [dir]   (dir default: repo-config)" >&2
+  echo "       (org defaults to bitwise-media-group)" >&2
   exit 2
 }
 
-cmd="${1:-}"
-org="${2:-}"
-dir="${3:-org-config}"
-[ -n "$cmd" ] && [ -n "$org" ] || usage
-
 gh=/opt/homebrew/bin/gh
+here=$(dirname "$0")
+
+cmd="${1:-}"
+[ -n "$cmd" ] || usage
+shift
+
+# Flags may appear anywhere among the args; positionals are <org> then [dir].
+visibility=all
+org=bitwise-media-group
+dir=""
+seen=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+  --public) visibility=public ;;
+  --private) visibility=private ;;
+  -*)
+    echo "unknown flag: $1" >&2
+    usage
+    ;;
+  *)
+    seen=$((seen + 1))
+    if [ "$seen" -eq 1 ]; then
+      org=$1
+    elif [ "$seen" -eq 2 ]; then
+      dir=$1
+    else
+      echo "unexpected arg: $1" >&2
+      usage
+    fi
+    ;;
+  esac
+  shift
+done
 
 export_config() {
   mkdir -p "$dir/rulesets"
@@ -157,8 +207,103 @@ import_config() {
   fi
 }
 
+# Apply a labels.json to a single repo with the same mirror logic as
+# repo-config.sh import: PATCH existing, POST new, and (unless KEEP_EXTRA) DELETE
+# any label the repo has that the file doesn't list. Names may contain spaces or
+# slashes, so URL-encode them for the path.
+sync_labels_to_repo() {
+  repo=$1
+  labels_file=$2
+
+  want=$(jq -r '.[].name' "$labels_file")
+  remote=$(${gh} api --paginate "repos/$repo/labels" --jq '.[].name')
+
+  jq -c '.[]' "$labels_file" | while read -r label; do
+    name=$(printf '%s' "$label" | jq -r '.name')
+    enc=$(printf '%s' "$name" | jq -sRr @uri)
+    if printf '%s\n' "$remote" | grep -Fxq -- "$name"; then
+      if printf '%s' "$label" | jq '{color, description} | with_entries(select(.value != null))' |
+        ${gh} api -X PATCH "repos/$repo/labels/$enc" --input - >/dev/null; then
+        echo "  updated  <- $name"
+      else
+        echo "  FAILED   <- $name (see error above)" >&2
+      fi
+    elif printf '%s' "$label" | ${gh} api -X POST "repos/$repo/labels" --input - >/dev/null; then
+      echo "  created  <- $name"
+    else
+      echo "  FAILED   <- $name (see error above)" >&2
+    fi
+  done
+
+  [ -n "${KEEP_EXTRA:-}" ] && return 0
+
+  printf '%s\n' "$remote" | while read -r name; do
+    [ -n "$name" ] || continue
+    if printf '%s\n' "$want" | grep -Fxq -- "$name"; then
+      continue
+    fi
+    enc=$(printf '%s' "$name" | jq -sRr @uri)
+    if ${gh} api -X DELETE "repos/$repo/labels/$enc" >/dev/null; then
+      echo "  deleted  -> $name (no local entry)"
+    else
+      echo "  FAILED   -> $name (see error above)" >&2
+    fi
+  done
+}
+
+# Fan <dir>/labels.json out to every non-archived repo in the org. Archived repos
+# are read-only and skipped; per-repo failures are reported and don't abort the run.
+labels_sync() {
+  labels_file="$dir/labels.json"
+  [ -f "$labels_file" ] || {
+    echo "no $labels_file; nothing to sync" >&2
+    exit 1
+  }
+
+  ${gh} api --paginate "orgs/$org/repos?type=$visibility" \
+    --jq '.[] | select(.archived | not) | .full_name' | while read -r repo; do
+    [ -n "$repo" ] || continue
+    echo "syncing labels -> $repo"
+    sync_labels_to_repo "$repo" "$labels_file"
+  done
+}
+
+# Run repo-config.sh import on every non-archived repo in the org, optionally
+# filtered by visibility. repo-config.sh applies the same <dir> snapshot
+# (settings, rulesets, labels) to each. Per-repo failures are reported but don't
+# abort the run.
+repo_sync() {
+  repo_config="$here/repo-config.sh"
+  [ -x "$repo_config" ] || {
+    echo "missing or non-executable $repo_config" >&2
+    exit 1
+  }
+
+  ${gh} api --paginate "orgs/$org/repos?type=$visibility" \
+    --jq '.[] | select(.archived | not) | .name' | while read -r name; do
+    [ -n "$name" ] || continue
+    echo "=== syncing $name ==="
+    "$repo_config" import "$name" "$dir" ||
+      echo "FAILED sync -> $name (see error above)" >&2
+  done
+}
+
 case "$cmd" in
-export) export_config ;;
-import) import_config ;;
+export)
+  dir="${dir:-org-config}"
+  export_config
+  ;;
+import)
+  dir="${dir:-org-config}"
+  import_config
+  ;;
+labels-sync)
+  dir="${dir:-repo-config}"
+  labels_sync
+  ;;
+sync)
+  dir="${dir:-repo-config}"
+  repo_sync
+  ;;
 *) usage ;;
 esac
