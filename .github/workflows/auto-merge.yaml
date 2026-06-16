@@ -1,0 +1,48 @@
+# Caller for the org's reusable auto-merge workflow — the set-and-forget
+# companion to merge.yaml. A maintainer arms a PR once (comments `/auto-merge`
+# or adds the `auto-merge` label) and it is fast-forwarded automatically the
+# moment it is approved and every required check is green, via the same
+# signature-preserving "FF Merge" App as the `/merge` flow. `/merge` merges now;
+# `/auto-merge` merges when ready. Remove the label to cancel.
+#
+# All four triggers are required, one per job in the reusable workflow:
+#   - issue_comment + pull_request(labeled) arm the PR;
+#   - pull_request_review(submitted) and workflow_run(completed) attempt the
+#     merge once the PR's state changes.
+# `workflows:` lists every workflow that must be green before merging. This repo's
+# only PR-gating check is CodeQL (public-code-quality requires code scanning);
+# release-please runs on push to main, not on PRs, so it is not listed. Whichever
+# run finishes last triggers the attempt, and the App re-verifies all checks,
+# approval, and the fast-forward before moving the ref.
+#
+# The label and review jobs use pull_request / pull_request_review (not the
+# _target variants), so they arm same-repo PRs only; fork PRs arm via the
+# `/auto-merge` comment and merge through that comment's attempt or workflow_run.
+#
+# Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
+# variable + FF_MERGE_PRIVATE_KEY secret, and the "FF Merge" App in main's
+# ruleset bypass list — the same App as the `/merge` flow.
+
+name: Auto-merge
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request:
+    types: [labeled]
+  pull_request_review:
+    types: [submitted]
+  workflow_run:
+    workflows: ["CodeQL analysis"]
+    types: [completed]
+
+# the App token does the privileged work; the caller grants nothing
+permissions: {}
+
+jobs:
+  auto-merge:
+    uses: bitwise-media-group/github-workflows/.github/workflows/auto-merge.yaml@077a003a620f49bd0062c73fc761dbea05d7fb70 # v1.1.0
+    with:
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}

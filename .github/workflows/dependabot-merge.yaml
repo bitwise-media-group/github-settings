@@ -1,0 +1,41 @@
+# Caller for the org's reusable Dependabot auto-merge workflow. Dependabot opens
+# weekly github-actions pin-bump PRs (see .github/dependabot.yaml); this
+# auto-approves the minor/patch ones and fast-forwards them into main once CI is
+# green, via the same signature-preserving "FF Merge" App as the `/merge` flow.
+# Major updates are never approved, so they wait for a human.
+#
+# Both the approval and the merge use the App token, so approval works regardless
+# of the org "Allow GitHub Actions to approve pull requests" setting (that only
+# restricts GITHUB_TOKEN), and the fast-forward bypasses main's ruleset as the
+# Integration bypass actor. The approval is what satisfies
+# public-pull-request-required's required review.
+#
+# Both triggers are required: pull_request_target approves on open, and
+# workflow_run fast-forwards once CI finishes green. `workflows:` lists this
+# repo's only PR-gating check, CodeQL (public-code-quality); check_suite is not
+# usable — GitHub does not fire it for a repo's own Actions CI. pull_request_target
+# is safe here: the reusable workflow never checks out or runs PR code.
+#
+# Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
+# variable + FF_MERGE_PRIVATE_KEY secret, and the "FF Merge" App in main's
+# ruleset bypass list — the same App as the `/merge` flow.
+
+name: Dependabot auto-merge
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize]
+  workflow_run:
+    workflows: ["CodeQL analysis"]
+    types: [completed]
+
+# the App token does the privileged work; the caller grants nothing
+permissions: {}
+
+jobs:
+  auto-merge:
+    uses: bitwise-media-group/github-workflows/.github/workflows/dependabot-merge.yaml@077a003a620f49bd0062c73fc761dbea05d7fb70 # v1.1.0
+    with:
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}

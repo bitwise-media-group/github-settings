@@ -1,0 +1,37 @@
+# Caller for the org's reusable fast-forward `/merge` workflow. A maintainer
+# comments `/merge` on an approved, green PR and the base branch is
+# fast-forwarded to the PR head, preserving each commit's signature — so the
+# result still satisfies `required_signatures` on main.
+#
+# The privileged ref move is done by the "FF Merge" GitHub App, which sits in
+# main's ruleset bypass list (the Integration bypass actor in
+# public-pull-request-required / public-code-quality). The reusable workflow
+# mints the App token, re-verifies the commenter's write access, that the PR is
+# approved and every required check is green, and that the move is a genuine
+# fast-forward before touching the ref — so the caller's GITHUB_TOKEN needs no
+# permissions of its own.
+#
+# Trigger: issue_comment runs in the base-repo context, so the App credentials
+# are available even for fork PRs.
+#
+# Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
+# variable + FF_MERGE_PRIVATE_KEY secret, and the "FF Merge" App in main's
+# ruleset bypass list.
+
+name: Fast-forward merge
+
+on:
+  issue_comment:
+    types: [created]
+
+# the App token does the privileged work; the job's GITHUB_TOKEN needs nothing
+permissions: {}
+
+jobs:
+  fast-forward:
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@077a003a620f49bd0062c73fc761dbea05d7fb70 # v1.1.0
+    with:
+      pr-number: ${{ github.event.issue.number }}
+      app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
+    secrets:
+      app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
