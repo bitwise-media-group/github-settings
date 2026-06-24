@@ -1,37 +1,48 @@
-# Caller for the org's reusable fast-forward `/merge` workflow. A maintainer
-# comments `/merge` on an approved, green PR and the base branch is
-# fast-forwarded to the PR head, preserving each commit's signature — so the
-# result still satisfies `required_signatures` on main.
+# Caller for the org's fast-forward merge workflow — both `/merge` (merge an
+# approved, green PR now) and set-and-forget auto-merge (`/auto-merge`, or add the
+# `auto-merge` label, and it fast-forwards the moment it is approved and every
+# required check is green) in one workflow. Each preserves the commit's signature —
+# so the result still satisfies `required_signatures` on main. This replaces the
+# previous split merge.yaml + auto-merge.yaml; v3 unifies them into one reusable
+# workflow.
 #
-# The privileged ref move is done by the "FF Merge" GitHub App, which sits in
-# main's ruleset bypass list (the Integration bypass actor in
-# public-pull-request-required / public-code-quality). The reusable workflow
-# mints the App token, re-verifies the commenter's write access, that the PR is
-# approved and every required check is green, and that the move is a genuine
-# fast-forward before touching the ref — so the caller's GITHUB_TOKEN needs no
-# permissions of its own.
+# The privileged ref move is done by the "FF Merge" GitHub App, which sits in main's
+# ruleset bypass list (the Integration bypass actor in
+# public-pull-request-required / public-code-quality). The reusable workflow mints
+# the App token, re-verifies the commenter's write access, that the PR is approved
+# and every required check is green, and that the move is a genuine fast-forward
+# before touching the ref — so the caller's GITHUB_TOKEN needs no permissions.
 #
-# Trigger: issue_comment runs in the base-repo context, so the App credentials
-# are available even for fork PRs.
+# Every trigger here is one that does NOT attach a check run to the PR
+# (issue_comment, workflow_run, schedule), so the merge machinery leaves no
+# skipped-job clutter on the PR's checks list. The approval signal is carried by the
+# companion merge-review-ack.yaml (its single job is the only check this system
+# adds) and re-enters via workflow_run. This repo's only PR-gating check is CodeQL
+# (public-code-quality); release-please runs on push to main, not on PRs, so it is
+# not listed. The schedule sweeps armed PRs as a backstop.
 #
 # Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
 # variable + FF_MERGE_PRIVATE_KEY secret, and the "FF Merge" App in main's
 # ruleset bypass list.
 
-name: Fast-forward merge
+name: Merge
 
 on:
   issue_comment:
     types: [created]
+  workflow_run:
+    workflows: ["CodeQL analysis", "Merge Review Ack"]
+    types: [completed]
+  schedule:
+    - cron: "17 * * * *"
 
 # the App token does the privileged work; the job's GITHUB_TOKEN needs nothing
 permissions: {}
 
 jobs:
-  fast-forward:
-    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@077a003a620f49bd0062c73fc761dbea05d7fb70 # v1.1.0
+  merge:
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge.yaml@ef97ca56a3a90f9f35556402e0c7478307edcbb9 # v3.0.0
     with:
-      pr-number: ${{ github.event.issue.number }}
       app-client-id: ${{ vars.FF_MERGE_CLIENT_ID }}
     secrets:
       app-private-key: ${{ secrets.FF_MERGE_PRIVATE_KEY }}
