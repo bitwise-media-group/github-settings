@@ -1,6 +1,7 @@
 # Caller for the org's reusable release workflow. This repo has no .goreleaser.yaml
-# and ships no build artifacts, so a release here is just the release-please cut
-# (the workflow's goreleaser/publish and vanity-tags jobs skip). It drives releases
+# and no zensical.toml, and ships no build artifacts, so a release here is just the
+# release-please cut (the workflow's goreleaser/publish, docs, and vanity-tags jobs
+# skip). It drives releases
 # within the org rulesets for public repos:
 #   - opens a `release-please--*` release PR branch, the prefix that
 #     `public-fork-only` allows to be created directly in the repo;
@@ -20,17 +21,29 @@ on:
   push:
     branches: [main]
 
-# ceiling for the reusable workflow's release-please job. The goreleaser/publish
-# job (which would need id-token/attestations/artifact-metadata) and vanity-tags
-# job never run here, so their scopes are not granted.
+# Ceiling for the reusable workflow's jobs. GitHub resolves a reusable workflow's
+# permissions as the union of every job and ignores `if:`, so the caller must grant
+# every scope any job declares — even the goreleaser/publish and docs jobs that are
+# skipped here (no .goreleaser.yaml, no zensical.toml) — or the run fails at startup.
+# This block is only a ceiling: each reusable job narrows to its own declared scopes,
+# so the only job that runs here, release-please, still gets just
+# contents/issues/pull-requests; the rest exist solely to clear that startup check.
 permissions:
-  # create release commits, tags, and GitHub Releases
+  # create release commits, tags, and GitHub Releases (release-please)
   contents: write
   # release-please creates PR labels via the issues API
   issues: write
   # open and update the release PR
   pull-requests: write
+  # cosign keyless signing (goreleaser) + the docs job's Pages OIDC deploy
+  id-token: write
+  # GitHub build-provenance attestation (goreleaser/publish)
+  attestations: write
+  # artifact storage record for the attestation (goreleaser/publish)
+  artifact-metadata: write
+  # publish the docs site to GitHub Pages (docs job, when a zensical.toml exists)
+  pages: write
 
 jobs:
   release:
-    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@5a07255dbaf1c4fb63c95cb93f7db6555bccc711 # v3.2.1
+    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@4a154ffd7efbb6aff856386ec1def4b6dc364672 # v4.0.0
