@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.1.0](https://github.com/bitwise-media-group/github-settings/compare/v1.0.0...v1.1.0) (2026-06-29)
+
+
+### Features
+
+* **org-config:** support default maintainer team config ([5fa9e28](https://github.com/bitwise-media-group/github-settings/commit/5fa9e28bda263bdf18a4d1f396d2303dc438153b))
+* **org-config:** update org policy ([6230aef](https://github.com/bitwise-media-group/github-settings/commit/6230aefbb6ba9ccfd280ad86b51d93e22fc024c3))
+* **repo-config:** sync PR creation policy and Pages source ([b5222e3](https://github.com/bitwise-media-group/github-settings/commit/b5222e36ebe04c6f802f129f3c25ffcafbd124d8))
+
+
+### Bug Fixes
+
+* **rulesets:** match nested dependabot branches in public-fork-only ([034ccbb](https://github.com/bitwise-media-group/github-settings/commit/034ccbb4814d5cdff23206c5b505733ca4610e96))
+
 ## 1.0.0 (2026-06-16)
 
 
