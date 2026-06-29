@@ -10,17 +10,21 @@
         {
           "name": "visibility",
           "source": "system",
-          "property_values": ["public"]
+          "property_values": [
+            "public"
+          ]
         }
       ]
     },
     "ref_name": {
       "exclude": [
         "refs/heads/release-please--*",
-        "refs/heads/dependabot/**",
+        "refs/heads/dependabot/**/*",
         "refs/heads/main"
       ],
-      "include": ["~ALL"]
+      "include": [
+        "~ALL"
+      ]
     }
   },
   "rules": [
