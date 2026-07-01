@@ -7,17 +7,23 @@ set -eu
 #
 #   ./org-config.sh export <org> [dir]        # dump config  -> dir (default: ./org-config)
 #   ./org-config.sh import <org> [dir]        # apply config <- dir
-#   ./org-config.sh labels-sync [--public|--private] <org> [dir]
-#   ./org-config.sh sync        [--public|--private] <org> [dir]
-#   ./org-config.sh teams-sync  [--public|--private] <org>
+#   ./org-config.sh labels-sync    [--public|--private] <org> [dir]
+#   ./org-config.sh sync           [--public|--private] <org> [dir]
+#   ./org-config.sh workflows-sync [--public|--private] <org> [dir]
+#   ./org-config.sh teams-sync     [--public|--private] <org>
 #
 # org defaults to bitwise-media-group. The *-sync commands fan config out across
 # the org's repos and take --public / --private to limit which repos by
-# visibility. labels-sync and sync read a snapshot dir (default: ./repo-config):
-#   labels-sync  applies only <dir>/labels.json to each repo.
-#   sync         runs the full repo-config.sh import (settings, rulesets, labels).
-#   teams-sync   grants a team (default: bitwise-maintainers) a permission
-#                (default: maintain) on every repo; takes no dir.
+# visibility. labels-sync, sync, and workflows-sync read a snapshot dir
+# (default: ./repo-config):
+#   labels-sync     applies only <dir>/labels.json to each repo.
+#   sync            runs the full repo-config.sh import (settings, rulesets, labels).
+#   workflows-sync  commits each <dir>/workflows/*.yaml into .github/workflows/ of
+#                   every repo (upsert only, never deletes), links the shared project
+#                   onto each, and backfills each repo's existing issues into it — this
+#                   is how the add-to-project caller is wired into every repo.
+#   teams-sync      grants a team (default: bitwise-maintainers) a permission
+#                   (default: maintain) on every repo; takes no dir.
 #
 # What's covered:
 #   - Organisation-level rulesets only (full definitions: conditions, rules,
@@ -58,11 +64,43 @@ set -eu
 # additive and idempotent: GitHub's team-repo PUT upserts the grant, and the
 # command never removes a team from a repo (no mirror/delete pass).
 #
+# Workflows: workflows-sync fans <dir>/workflows/*.yaml out to .github/workflows/ in
+# EVERY non-archived repo via the Contents API, committing to the default branch. It
+# is how the org-sync wires up the add-to-project caller (repo-config/workflows/
+# add-to-project.yaml) so newly opened issues land in the shared Roadmap project.
+# Additive/upsert only: it creates or updates exactly the files it holds and never
+# deletes anything, so a repo's other workflows are untouched. Idempotent — it skips a
+# repo whose file already matches byte-for-byte, making no empty commit. The commit
+# carries a Signed-off-by trailer (satisfying web_commit_signoff_required), but a
+# Contents-API commit is NOT signed — GitHub only web-flow-signs commits made in the web
+# UI or by a GitHub App, not an OAuth-token API write — so it does not satisfy
+# required_signatures. On a public repo's default branch that means the org owner must
+# bypass three rules for the push to land: pull_request, required_signatures
+# (public-release-branch-security), and code_scanning (public-code-quality) — so
+# OrganizationAdmin is a bypass actor on all three rulesets. A single commit on the tip
+# already satisfies required_linear_history / non_fast_forward. Writing under
+# .github/workflows/ needs the token's `workflow` scope. One-time org setup (the
+# "Project Sync" App + ADD_TO_PROJECT_CLIENT_ID / ADD_TO_PROJECT_PRIVATE_KEY) lives in
+# that caller's header and github-workflows' add-to-project.yaml.
+#   In the same pass it links the shared project (PROJECT_NUMBER, default 1 = Roadmap)
+#   onto each repo so the board also appears on the repo's Projects tab, using the
+#   first-party `gh project link`. It reads which repos are already linked and only links
+#   new ones — an org owner's gh token has the project write access that needs; a re-run
+#   over already-linked repos is read-only. Never unlinks. Then it backfills the repo's
+#   existing issues (ISSUE_STATE, default open) into the board via `gh project item-add`,
+#   so work opened before the workflow existed is caught up too; the add dedupes, so
+#   re-runs make no duplicates. Set PROJECT_NUMBER=0 to fan the files out without touching
+#   the project at all, or ISSUE_STATE=none to link but skip the issue backfill.
+#
 # Env:
 #   STRIP_BYPASS=1   drop ruleset bypass_actors on export — use when the bypass
 #                    actors (teams, apps, custom roles) won't exist in the target.
 #   KEEP_EXTRA=1     labels-sync only: add/update labels but never delete ones a
 #                    repo has that aren't in labels.json (additive, not mirror).
+#   PROJECT_NUMBER   workflows-sync only: org project to link + backfill into (default 1,
+#                    the Roadmap board); 0 skips all project work.
+#   ISSUE_STATE      workflows-sync only: which existing issues to backfill —
+#                    open (default) | closed | all | none (skip the backfill).
 #   TEAM=<slug>      teams-sync only: org team to grant (default bitwise-maintainers).
 #   TEAM_PERMISSION  teams-sync only: pull|triage|push|maintain|admin or a custom
 #                    role name (default maintain).
@@ -70,6 +108,10 @@ set -eu
 # Requires: gh (authenticated, org owner), jq.
 # Note: reading/writing org settings and rulesets requires organisation owner;
 #       switch accounts with `gh auth switch` if the active one lacks access.
+#       workflows-sync additionally needs the active token's `workflow` scope to write
+#       under .github/workflows/ (gh auth refresh -s workflow), must run as an org owner
+#       so its unsigned Contents-API commits bypass the default-branch rules, and links
+#       the board via `gh project link` (project write, which an org-owner gh token has).
 
 SETTINGS_FILTER='{
   default_repository_permission,
@@ -92,9 +134,10 @@ SETTINGS_FILTER='{
 usage() {
   echo "usage: $0 export <org> [dir]" >&2
   echo "       $0 import <org> [dir]" >&2
-  echo "       $0 labels-sync [--public|--private] <org> [dir]   (dir default: repo-config)" >&2
-  echo "       $0 sync        [--public|--private] <org> [dir]   (dir default: repo-config)" >&2
-  echo "       $0 teams-sync  [--public|--private] <org>         (team default: bitwise-maintainers)" >&2
+  echo "       $0 labels-sync    [--public|--private] <org> [dir]   (dir default: repo-config)" >&2
+  echo "       $0 sync           [--public|--private] <org> [dir]   (dir default: repo-config)" >&2
+  echo "       $0 workflows-sync [--public|--private] <org> [dir]   (dir default: repo-config)" >&2
+  echo "       $0 teams-sync     [--public|--private] <org>         (team default: bitwise-maintainers)" >&2
   echo "       (org defaults to bitwise-media-group)" >&2
   exit 2
 }
@@ -105,6 +148,17 @@ here=$(dirname "$0")
 # teams-sync target: which org team gets which permission on every repo.
 team=${TEAM:-bitwise-maintainers}
 team_permission=${TEAM_PERMISSION:-maintain}
+
+# workflows-sync also links this org Projects v2 board onto each repo (so it shows on
+# the repo's Projects tab). It is the board number in the project URL — keep it in step
+# with the project-url in repo-config/workflows/add-to-project.yaml. Set PROJECT_NUMBER=0
+# to skip linking and only fan the workflow files out.
+project_number=${PROJECT_NUMBER:-1}
+
+# workflows-sync also backfills each repo's existing issues into that project, so the
+# board catches up on work opened before the add-to-project workflow existed. Which
+# issues: open (default), closed, all, or none to skip the backfill. PRs are never added.
+issue_state=${ISSUE_STATE:-open}
 
 cmd="${1:-}"
 [ -n "$cmd" ] || usage
@@ -324,6 +378,153 @@ teams_sync() {
   done
 }
 
+# Commit one file into a repo at $path on its default branch via the Contents API.
+# Idempotent: fetch the current file first and skip the PUT when it is byte-identical
+# (a trailing-newline difference is ignored — command substitution strips it from both
+# sides), so re-runs make no empty commits. A blob sha is required to update an existing
+# file and omitted when creating. $signoff (set by the caller) supplies the Signed-off-by
+# trailer that web_commit_signoff_required expects; the commit itself is signed by GitHub.
+push_file_to_repo() {
+  repo=$1
+  path=$2
+  file=$3
+
+  remote=$(${gh} api "repos/$repo/contents/$path" \
+    -H "Accept: application/vnd.github.raw" 2>/dev/null || true)
+  if [ -n "$remote" ] && [ "$remote" = "$(cat "$file")" ]; then
+    echo "  unchanged  == $path"
+    return 0
+  fi
+
+  sha=$(${gh} api "repos/$repo/contents/$path" --jq '.sha' 2>/dev/null || true)
+
+  payload=$(jq -n \
+    --arg m "chore: sync $path from github-settings
+
+Signed-off-by: $signoff" \
+    --arg c "$(base64 <"$file" | tr -d '\n')" \
+    --arg s "$sha" \
+    '{message: $m, content: $c} + (if $s == "" then {} else {sha: $s} end)')
+
+  if printf '%s' "$payload" | ${gh} api -X PUT "repos/$repo/contents/$path" --input - >/dev/null; then
+    if [ -n "$sha" ]; then
+      echo "  updated    <- $path"
+    else
+      echo "  created    <- $path"
+    fi
+  else
+    echo "  FAILED     <- $path (see error above)" >&2
+  fi
+}
+
+# Link the shared org project (#$project_number) onto a repo so it appears on the repo's
+# Projects tab. Uses the first-party `gh project link` rather than a hand-built GraphQL
+# mutation, so there is no query string to mis-quote. Idempotent by construction:
+# $project_linked holds the repos already linked (fetched once, read-only), so a re-run
+# skips the write entirely — only a genuinely new link calls `gh project link` (which
+# needs the token's `project` scope). A link failure is reported, not fatal.
+link_project_to_repo() {
+  repo=$1
+
+  if printf '%s\n' "$project_linked" | grep -Fxq -- "$repo"; then
+    echo "  linked     == project #$project_number (already)"
+    return 0
+  fi
+
+  if ${gh} project link "$project_number" --owner "$org" --repo "$repo" >/dev/null; then
+    echo "  linked     -> project #$project_number"
+  else
+    echo "  FAILED     -> link project #$project_number (see error above)" >&2
+  fi
+}
+
+# Add a repo's existing issues to the shared project so the board catches up on work
+# opened before the add-to-project workflow existed. Uses `gh project item-add`, whose
+# addProjectV2ItemById path dedupes — an issue already on the board is a no-op, so
+# re-runs add no duplicates (they just re-assert each item). $issue_state (open|closed|
+# all) picks which issues; PRs are never added (gh issue list lists issues only). A repo
+# with issues disabled lists nothing. Per-issue failures are reported, not fatal.
+backfill_issues_to_project() {
+  repo=$1
+  ${gh} issue list --repo "$repo" --state "$issue_state" --limit 1000 \
+    --json url --jq '.[].url' 2>/dev/null | while read -r url; do
+    [ -n "$url" ] || continue
+    if ${gh} project item-add "$project_number" --owner "$org" --url "$url" >/dev/null; then
+      echo "  added issue -> $url"
+    else
+      echo "  FAILED add  -> $url (see error above)" >&2
+    fi
+  done
+}
+
+# Fan every <dir>/workflows/*.yaml out to .github/workflows/ in each non-archived repo,
+# optionally filtered by visibility; link the shared org project (PROJECT_NUMBER) onto
+# each so it also shows on the repo's Projects tab; and backfill each repo's existing
+# issues (ISSUE_STATE) into that project so the board catches up on work opened before
+# the workflow existed. Additive/upsert only — it creates or updates just the files it
+# holds and never deletes, so a repo's other workflows are untouched; linking never
+# unlinks and the issue backfill dedupes. Per-repo/-file failures are reported and don't
+# abort the run.
+workflows_sync() {
+  wf_dir="$dir/workflows"
+  [ -d "$wf_dir" ] || {
+    echo "no $wf_dir; nothing to sync" >&2
+    exit 1
+  }
+
+  found=0
+  for f in "$wf_dir"/*.yaml "$wf_dir"/*.yml; do
+    [ -e "$f" ] && found=1
+  done
+  [ "$found" -eq 1 ] || {
+    echo "no workflow files in $wf_dir; nothing to sync" >&2
+    exit 1
+  }
+
+  # Sign-off identity for web_commit_signoff_required, resolved once from the active gh
+  # account; fall back to the GitHub noreply address when the account hides its email.
+  gh_login=$(${gh} api user --jq '.login')
+  gh_name=$(${gh} api user --jq '.name // .login')
+  gh_id=$(${gh} api user --jq '.id')
+  gh_email=$(${gh} api user --jq '.email // empty')
+  [ -n "$gh_email" ] || gh_email="${gh_id}+${gh_login}@users.noreply.github.com"
+  signoff="$gh_name <$gh_email>"
+
+  # Resolve the shared project and the repos already linked to it, once and read-only.
+  # PROJECT_NUMBER=0 (or a project the account can't see) leaves project_id empty and
+  # skips linking entirely — the workflow files still sync.
+  project_id=""
+  project_linked=""
+  if [ "$project_number" -ne 0 ]; then
+    project_id=$(${gh} api graphql \
+      -f query="{organization(login: \"$org\") {projectV2(number: $project_number) {id}}}" \
+      --jq '.data.organization.projectV2.id' 2>/dev/null || true)
+    if [ -n "$project_id" ]; then
+      project_linked=$(${gh} api graphql \
+        -f query="{organization(login: \"$org\") {projectV2(number: $project_number) {repositories(first: 100) {nodes {nameWithOwner}}}}}" \
+        --jq '.data.organization.projectV2.repositories.nodes[].nameWithOwner' 2>/dev/null || true)
+    else
+      echo "project #$project_number not found on $org; skipping project links" >&2
+    fi
+  fi
+
+  ${gh} api --paginate "orgs/$org/repos?type=$visibility" \
+    --jq '.[] | select(.archived | not) | .full_name' | while read -r repo; do
+    [ -n "$repo" ] || continue
+    echo "syncing workflows -> $repo"
+    for f in "$wf_dir"/*.yaml "$wf_dir"/*.yml; do
+      [ -e "$f" ] || continue
+      push_file_to_repo "$repo" ".github/workflows/$(basename "$f")" "$f"
+    done
+    if [ -n "$project_id" ]; then
+      link_project_to_repo "$repo"
+      if [ "$issue_state" != none ]; then
+        backfill_issues_to_project "$repo"
+      fi
+    fi
+  done
+}
+
 case "$cmd" in
 export)
   dir="${dir:-org-config}"
@@ -340,6 +541,10 @@ labels-sync)
 sync)
   dir="${dir:-repo-config}"
   repo_sync
+  ;;
+workflows-sync)
+  dir="${dir:-repo-config}"
+  workflows_sync
   ;;
 teams-sync)
   teams_sync

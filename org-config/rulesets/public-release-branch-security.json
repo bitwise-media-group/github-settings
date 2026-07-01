@@ -2,7 +2,13 @@
   "name": "public-release-branch-security",
   "target": "branch",
   "enforcement": "active",
-  "bypass_actors": [],
+  "bypass_actors": [
+    {
+      "actor_id": null,
+      "actor_type": "OrganizationAdmin",
+      "bypass_mode": "always"
+    }
+  ],
   "conditions": {
     "ref_name": {
       "exclude": [],
