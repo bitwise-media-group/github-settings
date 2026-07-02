@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.3.0](https://github.com/bitwise-media-group/github-settings/compare/v1.2.0...v1.3.0) (2026-07-02)
+
+
+### Features
+
+* **org-config:** allow component version tags in org rulesets ([4c39ff0](https://github.com/bitwise-media-group/github-settings/commit/4c39ff04e74f76c28d5b0f55aaa5585d64579ea5))
+
 ## [1.2.0](https://github.com/bitwise-media-group/github-settings/compare/v1.1.0...v1.2.0) (2026-07-01)
 
 
