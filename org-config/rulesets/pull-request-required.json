@@ -1,5 +1,5 @@
 {
-  "name": "public-pull-request-required",
+  "name": "pull-request-required",
   "target": "branch",
   "enforcement": "active",
   "bypass_actors": [

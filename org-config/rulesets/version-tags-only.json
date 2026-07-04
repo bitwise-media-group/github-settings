@@ -1,5 +1,5 @@
 {
-  "name": "public-version-tags-only",
+  "name": "version-tags-only",
   "target": "tag",
   "enforcement": "active",
   "bypass_actors": [],

@@ -10,7 +10,7 @@
         {
           "name": "visibility",
           "source": "system",
-          "property_values": ["public", "private"]
+          "property_values": ["public"]
         }
       ]
     },
@@ -20,7 +20,7 @@
         "refs/heads/dependabot/**/*",
         "refs/heads/bot/**",
         "refs/heads/main",
-        "release"
+        "refs/heads/release"
       ],
       "include": ["~ALL"]
     }

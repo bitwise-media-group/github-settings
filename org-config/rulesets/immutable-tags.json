@@ -1,5 +1,5 @@
 {
-  "name": "public-immutable-tags",
+  "name": "immutable-tags",
   "target": "tag",
   "enforcement": "active",
   "bypass_actors": [],
