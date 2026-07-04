@@ -19,7 +19,8 @@
         "refs/heads/release-please--*",
         "refs/heads/dependabot/**/*",
         "refs/heads/bot/**",
-        "refs/heads/main"
+        "refs/heads/main",
+        "release"
       ],
       "include": ["~ALL"]
     }
