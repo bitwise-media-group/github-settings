@@ -12,28 +12,21 @@
   "conditions": {
     "ref_name": {
       "exclude": [],
-      "include": [
-        "~DEFAULT_BRANCH",
-        "refs/heads/releases/*"
-      ]
+      "include": ["~DEFAULT_BRANCH", "refs/heads/releases/*"]
     },
     "repository_property": {
       "exclude": [
         {
           "name": "bypass-policies",
           "source": "custom",
-          "property_values": [
-            "true"
-          ]
+          "property_values": ["true"]
         }
       ],
       "include": [
         {
           "name": "visibility",
           "source": "system",
-          "property_values": [
-            "public"
-          ]
+          "property_values": ["public", "private"]
         }
       ]
     }

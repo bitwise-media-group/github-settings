@@ -10,7 +10,7 @@
         {
           "name": "visibility",
           "source": "system",
-          "property_values": ["public"]
+          "property_values": ["public", "private"]
         }
       ]
     },

@@ -10,20 +10,13 @@
         {
           "name": "visibility",
           "source": "system",
-          "property_values": [
-            "public"
-          ]
+          "property_values": ["public", "private"]
         }
       ]
     },
     "ref_name": {
-      "exclude": [
-        "refs/tags/v*",
-        "refs/tags/*--v*"
-      ],
-      "include": [
-        "~ALL"
-      ]
+      "exclude": ["refs/tags/v*", "refs/tags/*--v*"],
+      "include": ["~ALL"]
     }
   },
   "rules": [

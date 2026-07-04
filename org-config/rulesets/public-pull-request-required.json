@@ -20,27 +20,20 @@
         {
           "name": "bypass-policies",
           "source": "custom",
-          "property_values": [
-            "true"
-          ]
+          "property_values": ["true"]
         }
       ],
       "include": [
         {
           "name": "visibility",
           "source": "system",
-          "property_values": [
-            "public"
-          ]
+          "property_values": ["public", "private"]
         }
       ]
     },
     "ref_name": {
       "exclude": [],
-      "include": [
-        "~DEFAULT_BRANCH",
-        "refs/heads/releases/*"
-      ]
+      "include": ["~DEFAULT_BRANCH", "refs/heads/releases/*"]
     }
   },
   "rules": [
@@ -53,9 +46,7 @@
         "require_code_owner_review": true,
         "require_last_push_approval": true,
         "required_review_thread_resolution": true,
-        "allowed_merge_methods": [
-          "rebase"
-        ]
+        "allowed_merge_methods": ["rebase"]
       }
     }
   ]
