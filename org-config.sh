@@ -396,6 +396,23 @@ push_file_to_repo() {
     return 0
   fi
 
+  # Refuse to replace a reusable-workflow definition with a synced caller: the
+  # workflows-sync fan-out visits every non-archived repo, INCLUDING the repo
+  # that hosts the reusable workflow every synced caller `uses:`
+  # (github-workflows). Overwriting that definition breaks the callers org-wide
+  # — a `uses:` target must declare workflow_call — which happened once
+  # (github-workflows cd29994, shipped broken in its v4.3.0). Guard on content
+  # rather than a repo-name list so any future reusable is protected too.
+  case $path in
+  .github/workflows/*)
+    if printf '%s\n' "$remote" | grep -q '^[[:space:]]*workflow_call:' &&
+      ! grep -q '^[[:space:]]*workflow_call:' "$file"; then
+      echo "  skipped    !! $path (existing file is a reusable-workflow definition; not overwriting with a caller)"
+      return 0
+    fi
+    ;;
+  esac
+
   sha=$(${gh} api "repos/$repo/contents/$path" --jq '.sha' 2>/dev/null || true)
 
   payload=$(jq -n \
