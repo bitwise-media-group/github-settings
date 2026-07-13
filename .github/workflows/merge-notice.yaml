@@ -1,3 +1,6 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
 # Caller for the org's reusable merge-notice workflow. When a PR is opened it
 # posts a one-time comment explaining this repo merges via `/merge` (see
 # merge.yaml), so contributors who don't yet know the convention aren't left
@@ -20,6 +23,6 @@ permissions:
 
 jobs:
   notice:
-    uses: bitwise-media-group/github-workflows/.github/workflows/merge-notice.yaml@176732b8b8ef2598ae0593db728b4415bcc86888 # v4.4.0
+    uses: bitwise-media-group/github-workflows/.github/workflows/merge-notice.yaml@ee856f73ecea9b0c2c989d3a6aa585774b0d2a38 # v5.0.0
     with:
       pr-number: ${{ github.event.pull_request.number }}

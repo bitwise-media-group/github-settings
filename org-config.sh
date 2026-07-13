@@ -1,4 +1,7 @@
 #!/usr/bin/env sh
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
 set -eu
 
 # org-config.sh — export/import a GitHub organisation's rulesets and general

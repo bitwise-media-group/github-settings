@@ -1,0 +1,10 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+#
+# github-settings consumes the shared toolchain (bitwise-media-group/toolchain)
+# as the .mise/ submodule: pinned tools + the markdown-lib task archetype come
+# from there (prose + license lint; nothing to build or test), and the Makefile
+# is a thin forwarder (.mise/mise.mk). The org-config.sh / repo-config.sh
+# export-import tooling stays plain shell, driven directly.
+[task_config]
+includes = [".mise/tasks/markdown-lib.toml"]

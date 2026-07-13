@@ -1,0 +1,28 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
+# Continuous integration — thin caller for the org's reusable ci workflow (v5+:
+# mise-task aware). It discovers the canonical tasks this repo defines via
+# `mise tasks ls --name-only` and runs `make <target>` for each — here only
+# `lint` (addlicense + prettier + markdownlint + actionlint via the markdown-lib
+# archetype); build and test don't exist in this archetype and are skipped. The
+# pinned tooling installs via mise from the toolchain submodule at .mise/.
+#
+# Pinned to a full commit SHA (tag in the comment); Dependabot keeps it fresh.
+name: Continuous Integration
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# the reusable workflow's jobs only need contents:read; grant just that ceiling
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    uses: bitwise-media-group/github-workflows/.github/workflows/ci.yaml@ee856f73ecea9b0c2c989d3a6aa585774b0d2a38 # v5.0.0
+    with:
+      # nothing to unit-test here (no test task), so skip the Codecov upload
+      coverage: false

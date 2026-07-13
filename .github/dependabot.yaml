@@ -1,3 +1,6 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
 version: 2
 
 # The org enables Dependabot alerts and security updates for new repos; this
@@ -23,3 +26,22 @@ updates:
       github-actions:
         patterns:
           - "*"
+
+  # The pinned dev CLIs and task archetypes come from the toolchain submodule
+  # at .mise/. Track it so a library release (a new `release` branch head)
+  # flows here as a bump.
+  - package-ecosystem: gitsubmodule
+    directory: /
+    cooldown:
+      default-days: 7
+      # our own toolchain submodule ships straight through — no cooldown wait.
+      # Dependabot names a submodule dependency by its path, so exclude ".mise"
+      # (not an owner glob like the actions ecosystem uses).
+      exclude:
+        - .mise
+    commit-message:
+      include: scope
+      prefix: build
+      prefix-development: build
+    schedule:
+      interval: daily

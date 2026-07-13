@@ -1,3 +1,6 @@
+# Copyright 2026 BitWise Media Group Ltd
+# SPDX-License-Identifier: MIT
+
 # Caller for the org's reusable release workflow. This repo has no .goreleaser.yaml
 # and no zensical.toml, and ships no build artifacts, so a release here is just the
 # release-please cut (the workflow's goreleaser/publish, docs, and vanity-tags jobs
@@ -46,7 +49,7 @@ permissions:
 
 jobs:
   release:
-    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@176732b8b8ef2598ae0593db728b4415bcc86888 # v4.4.0
+    uses: bitwise-media-group/github-workflows/.github/workflows/release.yaml@ee856f73ecea9b0c2c989d3a6aa585774b0d2a38 # v5.0.0
     with:
       # author the release PR as the FF Merge App so it can auto-merge (a
       # GITHUB_TOKEN-authored push fires no workflow_run to trigger the merge)

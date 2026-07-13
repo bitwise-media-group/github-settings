@@ -1,0 +1,4 @@
+[submodule ".mise"]
+	path = .mise
+	url = https://github.com/bitwise-media-group/toolchain.git
+	branch = release
