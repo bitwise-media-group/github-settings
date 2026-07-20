@@ -30,11 +30,6 @@
     "description": "This issue or pull request already exists"
   },
   {
-    "name": "github_actions",
-    "color": "000000",
-    "description": "Pull requests that update GitHub Actions code"
-  },
-  {
     "name": "good first issue",
     "color": "7057ff",
     "description": "Good for newcomers"

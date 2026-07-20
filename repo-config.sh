@@ -38,7 +38,9 @@ set -eu
 #     rulesets dir is left untouched; an empty one means "remove them all".
 #   - labels.json mirrors the same way by entry: update/create the labels listed,
 #     delete any repo label absent from it. A missing labels.json is left
-#     untouched; an empty array ([]) means "remove them all".
+#     untouched; an empty array ([]) means "remove them all". Exception: the
+#     per-ecosystem labels dependabot creates on its PRs (DEPENDABOT_LABELS,
+#     below) are never deleted — dependabot would just re-create them.
 #   - pages.json is applied, not mirrored: import enables/updates Pages to match
 #     it (create when off, update when on) but never disables Pages, and export
 #     only overwrites it while Pages is on — a missing pages.json, or a repo with
@@ -62,6 +64,30 @@ SETTINGS_FILTER='{
 }'
 
 ORG=bitwise-media-group
+
+# The per-ecosystem labels dependabot adds to its PRs (npm -> javascript,
+# pip -> python, nuget -> .NET, ...), auto-creating any that don't exist.
+# The delete pass leaves these alone even when labels.json omits them:
+# dependabot re-creates them on its next PR, so mirroring them away is churn.
+# (Its other default label, "dependencies", is in labels.json and so managed.)
+DEPENDABOT_LABELS='.NET
+dart
+devcontainers
+docker
+elixir
+elm
+github_actions
+go
+java
+javascript
+php
+python
+python:uv
+ruby
+rust
+submodules
+swift
+terraform'
 
 usage() {
   echo "usage: $0 export <repo> [dir]   (org is always $ORG)" >&2
@@ -228,10 +254,15 @@ import_config() {
       fi
     done
 
-    # Delete: every remote label without a matching entry.
+    # Delete: every remote label without a matching entry, except dependabot's
+    # ecosystem labels (case-insensitive: GitHub label names are).
     printf '%s\n' "$remote" | while read -r name; do
       [ -n "$name" ] || continue
       if printf '%s\n' "$want" | grep -Fxq -- "$name"; then
+        continue
+      fi
+      if printf '%s\n' "$DEPENDABOT_LABELS" | grep -Fxqi -- "$name"; then
+        echo "kept label         -- $name (dependabot ecosystem label)"
         continue
       fi
       enc=$(printf '%s' "$name" | jq -sRr @uri)

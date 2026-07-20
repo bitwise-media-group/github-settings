@@ -58,7 +58,9 @@ set -eu
 # same upsert + delete mirror logic repo-config.sh uses (this also covers repos
 # that already exist). Destructive by design: a label absent from the file is
 # deleted from each repo, which removes it from that repo's issues/PRs. Set
-# KEEP_EXTRA=1 to only add/update and never delete.
+# KEEP_EXTRA=1 to only add/update and never delete. Exception: the per-ecosystem
+# labels dependabot creates on its PRs (DEPENDABOT_LABELS, below) are never
+# deleted — dependabot would just re-create them.
 #
 # Teams: teams-sync grants one org team a single permission on EVERY non-archived
 # repo in the org, so a standing maintainer team gets access to repos created
@@ -133,6 +135,30 @@ SETTINGS_FILTER='{
   secret_scanning_enabled_for_new_repositories,
   secret_scanning_push_protection_enabled_for_new_repositories,
 }'
+
+# The per-ecosystem labels dependabot adds to its PRs (npm -> javascript,
+# pip -> python, nuget -> .NET, ...), auto-creating any that don't exist.
+# labels-sync's delete pass leaves these alone even when labels.json omits them:
+# dependabot re-creates them on its next PR, so mirroring them away is churn.
+# (Its other default label, "dependencies", is in labels.json and so managed.)
+# Keep in step with repo-config.sh.
+DEPENDABOT_LABELS='.NET
+dart
+devcontainers
+docker
+elixir
+elm
+github_actions
+go
+java
+javascript
+php
+python
+ruby
+rust
+submodules
+swift
+terraform'
 
 usage() {
   echo "usage: $0 export <org> [dir]" >&2
@@ -315,6 +341,10 @@ sync_labels_to_repo() {
   printf '%s\n' "$remote" | while read -r name; do
     [ -n "$name" ] || continue
     if printf '%s\n' "$want" | grep -Fxq -- "$name"; then
+      continue
+    fi
+    if printf '%s\n' "$DEPENDABOT_LABELS" | grep -Fxqi -- "$name"; then
+      echo "  kept     -- $name (dependabot ecosystem label)"
       continue
     fi
     enc=$(printf '%s' "$name" | jq -sRr @uri)
