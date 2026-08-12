@@ -18,7 +18,9 @@
       "exclude": [
         "refs/heads/release-please--*",
         "refs/heads/dependabot/**/*",
+        "refs/heads/agent/**",
         "refs/heads/bot/**",
+        "refs/heads/update/**",
         "refs/heads/main",
         "refs/heads/release"
       ],
