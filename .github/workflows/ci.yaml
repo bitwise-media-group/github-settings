@@ -8,7 +8,7 @@
 # archetype); build and test don't exist in this archetype and are skipped. The
 # pinned tooling installs via mise from the toolchain submodule at .mise/.
 #
-# Pinned to a full commit SHA (tag in the comment); Dependabot keeps it fresh.
+# Pinned to a full commit SHA (tag in the comment); Renovate keeps it fresh.
 name: Continuous Integration
 
 on:

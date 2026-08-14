@@ -32,7 +32,7 @@
 #
 # Org prerequisites (see bitwise-media-group/ff-merge): the FF_MERGE_CLIENT_ID
 # variable + FF_MERGE_PRIVATE_KEY secret, and the "FF Merge" App in main's ruleset
-# bypass list — the same App as the Dependabot auto-merge flow.
+# bypass list.
 
 name: Merge
 
