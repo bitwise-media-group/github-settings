@@ -12,9 +12,7 @@
   "conditions": {
     "repository_name": {
       "exclude": [],
-      "include": [
-        "~ALL"
-      ]
+      "include": ["~ALL"]
     }
   },
   "rules": [

@@ -22,7 +22,8 @@
         "refs/heads/bot/**",
         "refs/heads/update/**",
         "refs/heads/main",
-        "refs/heads/release"
+        "refs/heads/release",
+        "refs/heads/renovate/**"
       ],
       "include": ["~ALL"]
     }
