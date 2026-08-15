@@ -1,22 +1,32 @@
 [
   {
+    "name": "actions",
+    "color": "24292e",
+    "description": "Dependency update for github actions"
+  },
+  {
     "name": "auto-merge",
-    "color": "ededed",
+    "color": "cf7a0a",
     "description": "Fast-forward this PR once it is approved and all required checks pass"
   },
   {
     "name": "autorelease: pending",
-    "color": "ededed",
+    "color": "ea4335",
     "description": "A release is pending review"
   },
   {
     "name": "autorelease: tagged",
-    "color": "ededed",
+    "color": "34a853",
     "description": "A release has been created and tagged"
   },
   {
+    "name": "autorelease: triggered",
+    "color": "4285f4",
+    "description": "A release has been triggered"
+  },
+  {
     "name": "dependencies",
-    "color": "0366d6",
+    "color": "2e1503",
     "description": "Pull requests that update a dependency file"
   },
   {
@@ -25,9 +35,19 @@
     "description": "Improvements or additions to documentation"
   },
   {
+    "name": "dotnet",
+    "color": "512bd4",
+    "description": "Dependency update for dotnet"
+  },
+  {
     "name": "duplicate",
     "color": "cfd3d7",
     "description": "This issue or pull request already exists"
+  },
+  {
+    "name": "golang",
+    "color": "00add8",
+    "description": "Dependency update for golang"
   },
   {
     "name": "good first issue",
@@ -43,6 +63,36 @@
     "name": "invalid",
     "color": "e4e669",
     "description": "This doesn't seem right"
+  },
+  {
+    "name": "java",
+    "color": "f89820",
+    "description": "Dependency update for java"
+  },
+  {
+    "name": "mise",
+    "color": "c75b7a",
+    "description": "Dependency update for mise-en-place"
+  },
+  {
+    "name": "node",
+    "color": "68a063",
+    "description": "Dependency update for node.js"
+  },
+  {
+    "name": "python",
+    "color": "4584b6",
+    "description": "Dependency update for python"
+  },
+  {
+    "name": "submodule",
+    "color": "3e2c00",
+    "description": "Dependency update for a git submodule"
+  },
+  {
+    "name": "terraform",
+    "color": "7b42bc",
+    "description": "Dependency update for terraform"
   },
   {
     "name": "question",
