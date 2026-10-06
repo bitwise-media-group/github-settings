@@ -2,9 +2,13 @@
 # SPDX-License-Identifier: MIT
 #
 # github-settings consumes the shared toolchain (bitwise-media-group/toolchain)
-# as the .mise/ submodule: pinned tools + the markdown-lib task archetype come
-# from there (prose + license lint; nothing to build or test), and the Makefile
-# is a thin forwarder (.mise/mise.mk). The org-config.sh / repo-config.sh
-# export-import tooling stays plain shell, driven directly.
+# as the .mise/ submodule: mise loads its config.toml natively as
+# .mise/config.toml (pinned tools and the [vars] knob defaults), and this file
+# selects the task files. A Markdown/YAML repo with nothing to build or test
+# includes only common/ -- no archetype -- and the Makefile is a thin forwarder
+# (.mise/common/include.mk). The org-config.sh / repo-config.sh export-import
+# tooling stays plain shell, driven directly. There is nothing to pin here:
+# this repo's Renovate workflow bumps the submodule tag, which carries every
+# tool pin and its mise.lock.
 [task_config]
-includes = [".mise/tasks/markdown-lib.toml"]
+includes = [".mise/common/tasks.toml"]
