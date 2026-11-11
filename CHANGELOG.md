@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.1](https://github.com/bitwise-media-group/github-settings/compare/v2.0.0...v2.0.1) (2026-11-11)
+
+
+### Bug Fixes
+
+* **deps:** update bitwise-media-group/github-workflows action to v6.2.0 ([#29](https://github.com/bitwise-media-group/github-settings/issues/29)) ([b2f0f29](https://github.com/bitwise-media-group/github-settings/commit/b2f0f2953fa35a9d188c9ae5ee9bd4522d95f160))
+* **deps:** update bitwise-media-group/github-workflows action to v6.3.0 ([#32](https://github.com/bitwise-media-group/github-settings/issues/32)) ([35faa27](https://github.com/bitwise-media-group/github-settings/commit/35faa273b2ffe7dadc34927972d4a8146f381ab1))
+* **deps:** update bitwise-media-group/github-workflows action to v8 ([#38](https://github.com/bitwise-media-group/github-settings/issues/38)) ([a8605de](https://github.com/bitwise-media-group/github-settings/commit/a8605de6748455ed9c1ba5f7f645720cda3e137b))
+* **deps:** update bitwise-media-group/github-workflows action to v8.0.1 ([#39](https://github.com/bitwise-media-group/github-settings/issues/39)) ([ed94b18](https://github.com/bitwise-media-group/github-settings/commit/ed94b189d61cb76046e1006517ebd97fd008a15f))
+* **deps:** update bitwise-media-group/github-workflows action to v8.1.0 ([#41](https://github.com/bitwise-media-group/github-settings/issues/41)) ([253b01b](https://github.com/bitwise-media-group/github-settings/commit/253b01b300e896e7683fe8dd89b2aa825bed01fb))
+* **deps:** update bitwise-media-group/github-workflows action to v8.1.1 ([#42](https://github.com/bitwise-media-group/github-settings/issues/42)) ([9627020](https://github.com/bitwise-media-group/github-settings/commit/9627020f3d1722863af0ef210205b75b79a9ed0d))
+* **deps:** update bitwise-media-group/github-workflows action to v8.3.0 ([#45](https://github.com/bitwise-media-group/github-settings/issues/45)) ([5cb9bed](https://github.com/bitwise-media-group/github-settings/commit/5cb9bedf2c4e69a091bd957b101606c790370066))
+
 ## [2.0.0](https://github.com/bitwise-media-group/github-settings/compare/v1.2.0...v2.0.0) (2026-08-15)
 
 
