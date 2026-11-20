@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.0.2](https://github.com/bitwise-media-group/github-settings/compare/v2.0.1...v2.0.2) (2026-11-20)
+
+
+### Bug Fixes
+
+* **deps:** update bitwise-media-group/github-workflows action to v8.4.0 ([#48](https://github.com/bitwise-media-group/github-settings/issues/48)) ([fd7e16f](https://github.com/bitwise-media-group/github-settings/commit/fd7e16f0428a073f37ee5c4376b7bbfbc1eecccc))
+
 ## [2.0.1](https://github.com/bitwise-media-group/github-settings/compare/v2.0.0...v2.0.1) (2026-11-11)
 
 
